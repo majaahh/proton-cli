@@ -196,7 +196,7 @@ func New(opts Options) *UI {
 	}
 	u.drawing = u.Err
 	u.Out, u.Err = guard(u.Out, outStream), guard(u.Err, errStream)
-	u.Log, u.Trace = newLoggers(u.Err, u.errStyle, opts.LogLevel, opts.Salt, opts.Log, opts.Run)
+	u.Log, u.Trace = newLoggers(u.Err, opts.LogLevel, opts.Salt, opts.Log, opts.Run)
 	return u
 }
 

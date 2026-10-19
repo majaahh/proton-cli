@@ -21,7 +21,7 @@ func New() *cobra.Command {
 		Use:   "mail",
 		Short: "Read, write and organize mail",
 	}
-	c.AddCommand(messagesCmd(), conversationsCmd(), draftsCmd(), mailingListsCmd(),
+	c.AddCommand(messagesCmd(), conversationsCmd(), draftsCmd(), mailingListsCmd(), bridgeCmd(),
 		protectedCmd(), settingsCmd())
 	return c
 }

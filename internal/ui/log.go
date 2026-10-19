@@ -2,9 +2,14 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/roman-16/proton-cli/internal/errs"
 	"github.com/roman-16/proton-cli/internal/redact"
@@ -139,48 +144,83 @@ func (h redacting) WithGroup(name string) slog.Handler {
 	return h
 }
 
-// spoken is the screen's half of the logging: what a record looks like to the
-// person the run is happening in front of.
-//
-// A record at warn or above is the run telling them something while the work is
-// going on - it is being rate limited, it could not check a signature - and
-// that is a sentence, in the same shape as every other caveat this CLI writes.
-// A timestamp, a level and a list of attributes beside it would be the run
-// talking past them to a machine, and the machine already has the file.
-//
-// Below warn the reader asked for the machinery, so they get it: at info and
-// debug the record keeps its attributes and its record form. The file is
-// untouched either way - it holds every record whole, whatever the screen does
-// with it.
-type spoken struct {
-	w     io.Writer
-	style Style
-	level slog.Level
-	inner slog.Handler
+// logcat renders screen records in a compact, single-line Android logcat style.
+// The daily diagnostic file keeps its structured JSON representation.
+type logcat struct {
+	w      io.Writer
+	mu     *sync.Mutex
+	level  slog.Level
+	attrs  []slog.Attr
+	groups []string
 }
 
-func (h spoken) Enabled(_ context.Context, level slog.Level) bool { return level >= h.level }
+func newLogcat(w io.Writer, level slog.Level) slog.Handler {
+	return &logcat{w: w, mu: &sync.Mutex{}, level: level}
+}
 
-func (h spoken) Handle(ctx context.Context, r slog.Record) error {
-	if r.Level < slog.LevelWarn {
-		return h.inner.Handle(ctx, r)
+func (h *logcat) Enabled(_ context.Context, level slog.Level) bool { return level >= h.level }
+
+func (h *logcat) Handle(_ context.Context, r slog.Record) error {
+	t := r.Time
+	if t.IsZero() {
+		t = time.Now()
 	}
-	role := Caution
-	if r.Level >= slog.LevelError {
-		role = Danger
+	var line strings.Builder
+	fmt.Fprintf(&line, "%s %d %c cli: %s", t.Local().Format("01-02 15:04:05.000"), os.Getpid(), logcatLevel(r.Level), r.Message)
+	var writeAttr func(slog.Attr, []string)
+	writeAttr = func(a slog.Attr, groups []string) {
+		a.Value = a.Value.Resolve()
+		if a.Value.Kind() == slog.KindGroup {
+			next := append(append([]string(nil), groups...), a.Key)
+			for _, child := range a.Value.Group() {
+				writeAttr(child, next)
+			}
+			return
+		}
+		keyParts := append(append([]string(nil), groups...), a.Key)
+		value := a.Value.String()
+		if a.Value.Kind() == slog.KindString && strings.ContainsAny(value, " \t\r\n=\"\\") {
+			value = strconv.Quote(value)
+		}
+		fmt.Fprintf(&line, " %s=%s", strings.Join(keyParts, "."), value)
 	}
-	writeCaution(h.w, h.style, role, errs.Sentence(r.Message))
-	return nil
+	for _, a := range h.attrs {
+		writeAttr(a, h.groups)
+	}
+	r.Attrs(func(a slog.Attr) bool {
+		writeAttr(a, h.groups)
+		return true
+	})
+	line.WriteByte('\n')
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, err := io.WriteString(h.w, line.String())
+	return err
 }
 
-func (h spoken) WithAttrs(attrs []slog.Attr) slog.Handler {
-	h.inner = h.inner.WithAttrs(attrs)
-	return h
+func logcatLevel(level slog.Level) byte {
+	switch {
+	case level >= slog.LevelError:
+		return 'E'
+	case level >= slog.LevelWarn:
+		return 'W'
+	case level >= slog.LevelInfo:
+		return 'I'
+	default:
+		return 'D'
+	}
 }
 
-func (h spoken) WithGroup(name string) slog.Handler {
-	h.inner = h.inner.WithGroup(name)
-	return h
+func (h *logcat) WithAttrs(attrs []slog.Attr) slog.Handler {
+	clone := *h
+	clone.attrs = append(append([]slog.Attr(nil), h.attrs...), attrs...)
+	return &clone
+}
+
+func (h *logcat) WithGroup(name string) slog.Handler {
+	clone := *h
+	clone.groups = append(append([]string(nil), h.groups...), name)
+	return &clone
 }
 
 // fanout sends every record to each of several handlers, each with its own idea
@@ -247,16 +287,11 @@ func (f fanout) WithGroup(name string) slog.Handler {
 // attached here rather than passed at each call, so that a line written anywhere
 // - a service, a request, a skip - belongs to its run by construction. The
 // screen is left alone: there is only ever one run on it.
-func newLoggers(errw io.Writer, style Style, level slog.Level, salt []byte, file io.Writer, run string) (log, trace *slog.Logger) {
+func newLoggers(errw io.Writer, level slog.Level, salt []byte, file io.Writer, run string) (log, trace *slog.Logger) {
 	redactor := redact.New(salt)
 	screen := redacting{
 		redactor: redactor,
-		inner: spoken{
-			w:     errw,
-			style: style,
-			level: level,
-			inner: slog.NewTextHandler(errw, &slog.HandlerOptions{Level: level}),
-		},
+		inner:    newLogcat(errw, level),
 	}
 	if file == nil {
 		return slog.New(screen), slog.New(slog.DiscardHandler)

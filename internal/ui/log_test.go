@@ -16,7 +16,7 @@ import (
 func recorded(t *testing.T, level slog.Level, write func(log, trace *slog.Logger)) (screen string, file []map[string]any) {
 	t.Helper()
 	var errb, jsonl bytes.Buffer
-	log, trace := newLoggers(&errb, Style{}, level, []byte("a salt to test with"), &jsonl, "a91f")
+	log, trace := newLoggers(&errb, level, []byte("a salt to test with"), &jsonl, "a91f")
 	write(log, trace)
 
 	for line := range strings.SplitSeq(strings.TrimSpace(jsonl.String()), "\n") {
@@ -126,7 +126,7 @@ func TestBothDestinationsAgreeOnAHandle(t *testing.T) {
 
 func TestWithNoFileTheScreenStillWorks(t *testing.T) {
 	var errb bytes.Buffer
-	log, trace := newLoggers(&errb, Style{}, slog.LevelDebug, nil, nil, "a91f")
+	log, trace := newLoggers(&errb, slog.LevelDebug, nil, nil, "a91f")
 	log.Warn("Proton is rate limiting this run; trying again in 5s.", "method", "GET", "wait_ms", 5000)
 	trace.Error("run failed", "exit", 7)
 
@@ -147,8 +147,8 @@ func TestACaveatIsPutToThePersonWatching(t *testing.T) {
 		log.Warn("Proton is rate limiting this run; trying again in 5s.",
 			"method", "GET", "path", "/mail/v4/messages", "wait_ms", 5000, "attempt", 1)
 	})
-	if want := GlyphCaution + " Proton is rate limiting this run; trying again in 5s.\n"; screen != want {
-		t.Errorf("the screen read as a record rather than a sentence:\n got %q\nwant %q", screen, want)
+	if !strings.Contains(screen, " W cli: Proton is rate limiting this run; trying again in 5s.") {
+		t.Errorf("the screen lost the logcat warning record: %q", screen)
 	}
 	if len(file) != 1 || file[0]["wait_ms"] != float64(5000) || file[0]["attempt"] != float64(1) {
 		t.Errorf("the file lost what the screen left out: %v", file)
@@ -160,7 +160,7 @@ func TestAskedForDetailTheScreenKeepsTheRecord(t *testing.T) {
 	screen, _ := recorded(t, slog.LevelDebug, func(log, _ *slog.Logger) {
 		log.Debug("api request", "method", "GET", "path", "/core/v4/users", "status", 200)
 	})
-	for _, want := range []string{"level=DEBUG", "method=GET", "path=/core/v4/users", "status=200"} {
+	for _, want := range []string{" D cli: api request", "method=GET", "path=/core/v4/users", "status=200"} {
 		if !strings.Contains(screen, want) {
 			t.Errorf("the screen dropped %q from a debug record: %q", want, screen)
 		}

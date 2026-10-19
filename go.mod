@@ -7,6 +7,7 @@ require (
 	github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f
 	github.com/ProtonMail/go-srp v0.0.7
 	github.com/ProtonMail/gopenpgp/v3 v3.4.1-proton
+	github.com/emersion/go-imap v1.2.1
 	github.com/fxamacker/cbor/v2 v2.9.4
 	github.com/go-ctap/ctaphid v0.8.1
 	github.com/go-ctap/winhello v0.1.0
@@ -29,6 +30,9 @@ require (
 require (
 	aead.dev/minisign v0.3.0 // indirect
 	github.com/ProtonMail/bcrypt v0.0.0-20211005172633-e235017c1baf // indirect
+	github.com/emersion/go-message v0.15.0 // indirect
+	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
+	github.com/emersion/go-textwrapper v0.0.0-20200911093747-65d896831594 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect

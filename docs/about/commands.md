@@ -225,6 +225,7 @@ Where a command shows `REF`, pass a full ID, the eight-character short ID a list
 | [`proton index list`](../index/index.md#list) | List what is indexed on this machine |
 | [`proton index update`](../index/index.md#update) | Bring every index up to date |
 | [`proton index watch`](../index/index.md#watch) | Keep every index current until you stop it |
+| [`proton mail bridge serve`](../mail/bridge.md#serve) | Serve mail to a local desktop client |
 | [`proton mail conversations attachments download`](../mail/conversations.md#attachments-download) | Download and decrypt attachments from a thread |
 | [`proton mail conversations attachments list`](../mail/conversations.md#attachments-list) | List every attachment in a thread |
 | [`proton mail conversations count`](../mail/conversations.md#count) | Count the threads in each folder and label |

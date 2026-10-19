@@ -718,6 +718,10 @@ var examples = map[string][]string{
 		"proton mail messages watch --from billing@example.com",
 		"proton mail messages watch --output json",
 	},
+	"proton mail bridge serve": {
+		"proton mail bridge serve",
+		"proton mail bridge serve --listen 127.0.0.1:1144 --smtp-listen 127.0.0.1:1026",
+	},
 	"proton mail messages get": {
 		"proton mail messages get 'Invoice #2291'",
 		"proton mail messages get 5bH2mQxK --render html",

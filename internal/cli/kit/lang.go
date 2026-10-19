@@ -40,6 +40,7 @@ var Verbs = map[string]string{
 	"get":   "show one thing in full",
 	"count": "say how many there are in each place, and how many are unread",
 	"watch": "stay attached and report each thing as it happens",
+	"serve": "keep a local service running",
 
 	// Writing
 	"create": "make a new thing",

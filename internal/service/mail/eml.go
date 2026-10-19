@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,10 @@ import (
 	"github.com/roman-16/proton-cli/internal/mailtext"
 	"github.com/roman-16/proton-cli/internal/skip"
 )
+
+// ErrEmptyEML means a valid RFC 822 document had no readable body or
+// attachments. Import callers may reject it; SMTP delivery can still send it.
+var ErrEmptyEML = errors.New("the file has no readable body or attachments")
 
 // Exporting a message rebuilds it as RFC 822: Proton keeps the original header
 // block verbatim, so the export reuses it and overwrites only the headers that
@@ -274,7 +279,7 @@ func ParseEML(r io.Reader) (*ParsedEML, error) {
 		out.Body = plain
 	}
 	if strings.TrimSpace(out.Body) == "" && len(out.Attachments) == 0 {
-		return nil, fmt.Errorf("the file has no readable body or attachments")
+		return out, ErrEmptyEML
 	}
 	return out, nil
 }

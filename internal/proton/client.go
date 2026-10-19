@@ -891,9 +891,14 @@ func (c *Client) doOnce(ctx context.Context, req Request) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.log.Debug("api request",
-		"method", req.Method, "path", req.Path, "status", resp.StatusCode,
-		"bytes", len(buf), "duration_ms", time.Since(start).Milliseconds())
+	// Routine successful calls are too noisy for commands that export a large
+	// mailbox one message at a time. Keep slow successes for diagnostics; errors
+	// above are always recorded.
+	if elapsed := time.Since(start); elapsed >= time.Second {
+		c.log.Debug("slow api request",
+			"method", req.Method, "path", req.Path, "status", resp.StatusCode,
+			"bytes", len(buf), "duration_ms", elapsed.Milliseconds())
+	}
 	c.observeTime(resp.Header.Get("Date"))
 	return &Response{Status: resp.StatusCode, Header: resp.Header, Body: buf}, nil
 }
