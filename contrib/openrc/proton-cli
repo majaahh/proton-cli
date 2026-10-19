@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+
+name="proton-cli mail bridge"
+description="Local IMAP and SMTP bridge for Proton Mail"
+
+command="/usr/local/bin/proton"
+command_args="--log-level warn mail bridge serve"
+command_user="${PROTON_CLI_USER}"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+
+export HOME="${PROTON_CLI_HOME}"
+
+depend() {
+	need net
+}
+
+start_pre() {
+	if [ -z "${PROTON_CLI_USER}" ] || [ -z "${PROTON_CLI_HOME}" ]; then
+		eerror "Set PROTON_CLI_USER and PROTON_CLI_HOME in /etc/conf.d/${RC_SVCNAME}"
+		return 1
+	fi
+}
